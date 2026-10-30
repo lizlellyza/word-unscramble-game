@@ -1234,7 +1234,8 @@
 
         // Database Functions - Firebase + Local Storage Fallback
         function generateSessionId() {
-            return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            // Use a fixed session ID so all players share the same game session
+            return 'default_game_session';
         }
 
         function savePlayersToStorage() {
