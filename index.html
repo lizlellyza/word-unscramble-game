@@ -651,7 +651,7 @@
         </div>
 
         <!-- Level Selection -->
-        <div class="level-selector" id="levelSelector">
+        <div class="level-selector" id="levelSelector" style="display: none;">
             <button class="level-btn" onclick="startLevel(1)">
                 <div>Level 1</div>
                 <div style="font-size: 0.8em;">Easy</div>
@@ -813,13 +813,17 @@
 
         // Initialize on page load
         function initGame() {
-            showNameModal();
             loadPlayersFromStorage();
+            showNameModal();
         }
 
         function showNameModal() {
-            document.getElementById('nameModal').classList.remove('hidden');
-            document.getElementById('playerNameInput').focus();
+            const modal = document.getElementById('nameModal');
+            const input = document.getElementById('playerNameInput');
+            if (modal) {
+                modal.classList.remove('hidden');
+                if (input) input.focus();
+            }
         }
 
         function setPlayerName() {
@@ -1011,11 +1015,18 @@
 
         function updatePlayersDisplay() {
             const scoreboard = document.getElementById('playersScoreBoard');
+            if (!scoreboard) return;
+            
             scoreboard.innerHTML = '';
 
             // Sort players by score
             const sortedPlayers = Object.values(gameState.allPlayers)
                 .sort((a, b) => b.score - a.score);
+
+            if (sortedPlayers.length === 0) {
+                scoreboard.innerHTML = '<p style="color: #666;">No players yet. Start playing!</p>';
+                return;
+            }
 
             sortedPlayers.forEach(player => {
                 const div = document.createElement('div');
@@ -1082,6 +1093,9 @@
         }
 
         function resetGame() {
+            // Clear only game session data, preserve all players
+            const preservedPlayers = gameState.allPlayers;
+            
             gameState = {
                 currentLevel: null,
                 currentWordIndex: 0,
@@ -1090,7 +1104,7 @@
                 results: [],
                 words: [],
                 currentPlayer: null,
-                allPlayers: {},
+                allPlayers: preservedPlayers,
                 correctAnsweredBy: {}
             };
 
@@ -1101,7 +1115,6 @@
             document.getElementById('gameArea').classList.remove('active');
             document.getElementById('resultsSection').classList.remove('active');
             document.getElementById('emailMessage').classList.remove('show');
-            loadPlayersFromStorage();
         }
 
         function sendResults() {
@@ -1189,7 +1202,9 @@
         }
 
         // Initialize game on page load
-        window.addEventListener('load', initGame);
+        document.addEventListener('DOMContentLoaded', function() {
+            initGame();
+        });
     </script>
 </body>
 </html>
