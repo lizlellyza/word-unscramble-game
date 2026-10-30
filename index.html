@@ -634,8 +634,49 @@
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="container" style="position: relative;">
+        <div style="position: absolute; top: 20px; right: 20px;">
+            <button class="btn-admin" onclick="openAdminPanel()" style="background: #667eea; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-size: 0.9em;">⚙️ Admin</button>
+        </div>
         <h1>🎮 Word Unscramble</h1>
+
+        <!-- Welcome/Instructions Modal -->
+        <div class="modal" id="welcomeModal">
+            <div class="modal-content" style="max-width: 600px;">
+                <h2>📖 How to Play</h2>
+                <div style="text-align: left; font-size: 1em; line-height: 1.8;">
+                    <h3 style="color: #667eea; margin-top: 15px;">🎯 Objective</h3>
+                    <p>Unscramble the letters to find the correct word. Answer as many as you can!</p>
+                    
+                    <h3 style="color: #667eea; margin-top: 15px;">🎮 How It Works</h3>
+                    <ol style="padding-left: 20px;">
+                        <li><strong>Enter your name</strong> to join the game</li>
+                        <li><strong>Choose a difficulty level</strong>: Easy, Moderate, or Difficult</li>
+                        <li><strong>See scrambled words</strong> one by one</li>
+                        <li><strong>Type the correct answer</strong> or use hints</li>
+                        <li><strong>Skip words</strong> you don't know</li>
+                        <li><strong>View the leaderboard</strong> to see all players' scores in real-time</li>
+                    </ol>
+                    
+                    <h3 style="color: #667eea; margin-top: 15px;">⭐ Multiplayer Features</h3>
+                    <ul style="padding-left: 20px;">
+                        <li>👥 <strong>Live Leaderboard</strong> - See all players' scores</li>
+                        <li>🏆 <strong>First-to-Answer Tracking</strong> - See who solved each word first</li>
+                        <li>📊 <strong>Real-time Sync</strong> - Scores update instantly across all devices</li>
+                        <li>📧 <strong>Email Results</strong> - Send your results after playing</li>
+                    </ul>
+                    
+                    <h3 style="color: #667eea; margin-top: 15px;">💡 Tips</h3>
+                    <ul style="padding-left: 20px;">
+                        <li>Use the <strong>Hint</strong> button if you get stuck</li>
+                        <li>You can <strong>Skip</strong> any word you don't know</li>
+                        <li>Type your answer and press <strong>Enter</strong> or click <strong>Submit</strong></li>
+                        <li>Compete with your colleagues in real-time!</li>
+                    </ul>
+                </div>
+                <button class="btn btn-submit" onclick="closeWelcomeAndShowName()" style="width: 100%; margin-top: 20px;">Let's Play! 🚀</button>
+            </div>
+        </div>
 
         <!-- Player Name Modal -->
         <div class="modal" id="nameModal">
@@ -764,6 +805,45 @@
                 <button class="btn btn-skip" onclick="location.reload()" style="width: 100%;">Restart Game</button>
             </div>
         </div>
+
+        <!-- Admin Panel Modal -->
+        <div class="modal" id="adminModal" style="display: none;">
+            <div class="modal-content" style="max-width: 700px; max-height: 90vh; overflow-y: auto;">
+                <h2>🔐 Admin Panel - Update Words</h2>
+                
+                <div id="adminLoginForm">
+                    <p>Enter admin password:</p>
+                    <input 
+                        type="password" 
+                        id="adminPassword" 
+                        placeholder="Admin password"
+                        onkeypress="if(event.key==='Enter') adminLogin()"
+                    >
+                    <button class="btn btn-submit" onclick="adminLogin()" style="width: 100%; margin-top: 10px;">Login</button>
+                    <button class="btn btn-skip" onclick="closeAdminPanel()" style="width: 100%; margin-top: 10px;">Cancel</button>
+                </div>
+
+                <div id="adminContent" style="display: none;">
+                    <div style="margin-bottom: 20px;">
+                        <label style="font-weight: 600; display: block; margin-bottom: 5px;">Select Level:</label>
+                        <select id="adminLevelSelect" onchange="loadLevelWords()" style="width: 100%; padding: 8px;">
+                            <option value="1">Level 1 - Easy</option>
+                            <option value="2">Level 2 - Moderate</option>
+                            <option value="3">Level 3 - Difficult</option>
+                        </select>
+                    </div>
+
+                    <div id="wordsContainer" style="display: grid; gap: 15px;">
+                        <!-- Word forms will be generated here -->
+                    </div>
+
+                    <div style="margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <button class="btn btn-submit" onclick="saveWords()" style="width: 100%;">💾 Save Changes</button>
+                        <button class="btn btn-skip" onclick="closeAdminPanel()" style="width: 100%;">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -854,9 +934,28 @@
             correctAnsweredBy: {}
         };
 
+        // Admin Panel Configuration
+        const ADMIN_PASSWORD = 'Kokey0798!';
+
         // Initialize on page load
         function initGame() {
+            showWelcomeModal();
             loadPlayersFromStorage();
+        }
+
+        // Welcome Modal Functions
+        function showWelcomeModal() {
+            const modal = document.getElementById('welcomeModal');
+            if (modal) {
+                modal.classList.remove('hidden');
+            }
+        }
+
+        function closeWelcomeAndShowName() {
+            const welcomeModal = document.getElementById('welcomeModal');
+            if (welcomeModal) {
+                welcomeModal.classList.add('hidden');
+            }
             showNameModal();
         }
 
@@ -868,6 +967,87 @@
                 if (input) input.focus();
             }
         }
+
+        // Admin Panel Functions
+        function openAdminPanel() {
+            const adminModal = document.getElementById('adminModal');
+            const loginForm = document.getElementById('adminLoginForm');
+            const adminContent = document.getElementById('adminContent');
+            
+            if (adminModal) {
+                adminModal.style.display = 'block';
+                loginForm.style.display = 'block';
+                adminContent.style.display = 'none';
+                document.getElementById('adminPassword').value = '';
+                document.getElementById('adminPassword').focus();
+            }
+        }
+
+        function closeAdminPanel() {
+            const adminModal = document.getElementById('adminModal');
+            if (adminModal) {
+                adminModal.style.display = 'none';
+            }
+        }
+
+        function adminLogin() {
+            const password = document.getElementById('adminPassword').value;
+            if (password === ADMIN_PASSWORD) {
+                document.getElementById('adminLoginForm').style.display = 'none';
+                document.getElementById('adminContent').style.display = 'block';
+                loadLevelWords();
+            } else {
+                alert('❌ Incorrect password!');
+                document.getElementById('adminPassword').value = '';
+                document.getElementById('adminPassword').focus();
+            }
+        }
+
+        function loadLevelWords() {
+            const level = document.getElementById('adminLevelSelect').value;
+            const words = gameData[level].words;
+            const container = document.getElementById('wordsContainer');
+            container.innerHTML = '';
+
+            words.forEach((word, index) => {
+                const wordDiv = document.createElement('div');
+                wordDiv.style.border = '1px solid #ddd';
+                wordDiv.style.padding = '15px';
+                wordDiv.style.borderRadius = '8px';
+                wordDiv.style.backgroundColor = '#f9f9f9';
+                wordDiv.innerHTML = `
+                    <h4 style="margin-bottom: 10px;">Word ${index + 1}</h4>
+                    <div style="margin-bottom: 10px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 500;">Scrambled:</label>
+                        <input type="text" value="${word.scrambled}" class="word-scrambled-${level}-${index}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 500;">Answer:</label>
+                        <input type="text" value="${word.answer}" class="word-answer-${level}-${index}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 500;">Hint:</label>
+                        <input type="text" value="${word.hint}" class="word-hint-${level}-${index}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+                `;
+                container.appendChild(wordDiv);
+            });
+        }
+
+        function saveWords() {
+            const level = document.getElementById('adminLevelSelect').value;
+            const words = gameData[level].words;
+
+            words.forEach((word, index) => {
+                word.scrambled = document.querySelector(`.word-scrambled-${level}-${index}`).value.toUpperCase();
+                word.answer = document.querySelector(`.word-answer-${level}-${index}`).value.toUpperCase();
+                word.hint = document.querySelector(`.word-hint-${level}-${index}`).value;
+            });
+
+            alert('✅ Words updated successfully!\n\nNote: Changes are saved in your browser. To make them permanent, upload this page to GitHub.');
+            console.log('Updated gameData:', gameData);
+        }
+
 
         function setPlayerName() {
             const name = document.getElementById('playerNameInput').value.trim();
@@ -889,6 +1069,10 @@
             }
 
             savePlayersToStorage();
+            
+            // Start listening to Firebase for other players joining
+            startFirebaseSync();
+            
             document.getElementById('nameModal').classList.add('hidden');
             document.getElementById('levelSelector').style.display = 'grid';
         }
@@ -1236,6 +1420,23 @@
         function generateSessionId() {
             // Use a fixed session ID so all players share the same game session
             return 'default_game_session';
+        }
+
+        function startFirebaseSync() {
+            // Start listening to Firebase for real-time player updates
+            if (db && gameSessionId) {
+                console.log('Starting Firebase sync for session:', gameSessionId);
+                db.ref(`gameSessions/${gameSessionId}/players`).on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        console.log('Players update from Firebase:', data);
+                        gameState.allPlayers = data;
+                        updatePlayersDisplay();
+                    }
+                });
+            } else {
+                console.log('Firebase not ready for sync');
+            }
         }
 
         function savePlayersToStorage() {
