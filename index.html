@@ -769,25 +769,27 @@
     <script>
         // Firebase Configuration
         const firebaseConfig = {
-            apiKey: "AIzaSyA_H4c5K7L8M9N0O1P2Q3R4S5T6U7V8W9X",
-            authDomain: "word-unscramble-game.firebaseapp.com",
-            databaseURL: "https://word-unscramble-game-default-rtdb.firebaseio.com",
-            projectId: "word-unscramble-game",
-            storageBucket: "word-unscramble-game.appspot.com",
-            messagingSenderId: "123456789",
-            appId: "1:123456789:web:abc123def456"
-        };
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
 
-        // Initialize Firebase
-        let db = null;
-        let playersRef = null;
-        let gameSessionId = null;
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyC-I817M6AXd_Kea2TE0lioIXNq95gjq2s",
+  authDomain: "word-unscramble-game-bba02.firebaseapp.com",
+  projectId: "word-unscramble-game-bba02",
+  storageBucket: "word-unscramble-game-bba02.firebasestorage.app",
+  messagingSenderId: "940885860126",
+  appId: "1:940885860126:web:192e1fe2410a6eb07d730f",
+  measurementId: "G-500KYRN549"
+};
 
-        try {
-            firebase.initializeApp(firebaseConfig);
-            db = firebase.database();
-            console.log("Firebase initialized successfully");
-        } catch (error) {
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
             console.warn("Firebase initialization failed:", error.message);
             console.log("Game will work in single-device mode");
         }
