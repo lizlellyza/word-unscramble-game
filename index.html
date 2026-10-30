@@ -663,7 +663,6 @@
                         <li>👥 <strong>Live Leaderboard</strong> - See all players' scores</li>
                         <li>🏆 <strong>First-to-Answer Tracking</strong> - See who solved each word first</li>
                         <li>📊 <strong>Real-time Sync</strong> - Scores update instantly across all devices</li>
-                        <li>📧 <strong>Email Results</strong> - Send your results after playing</li>
                     </ul>
                     
                     <h3 style="color: #667eea; margin-top: 15px;">💡 Tips</h3>
@@ -1342,16 +1341,29 @@
                 console.log('Starting Firebase sync for session:', gameSessionId);
                 db.ref(`gameSessions/${gameSessionId}/players`).on('value', (snapshot) => {
                     const data = snapshot.val();
-                    if (data) {
-                        console.log('Players update from Firebase:', data);
-                        // Filter out players with null/undefined data
+                    console.log('Raw Firebase data:', data);
+                    
+                    if (data && typeof data === 'object') {
+                        // Filter out null, undefined, or invalid player data
                         const activePlayers = {};
                         Object.entries(data).forEach(([playerName, playerData]) => {
-                            if (playerData && playerData.name && playerData.score !== undefined) {
+                            // Only include players with valid data
+                            if (playerData !== null && 
+                                playerData !== undefined && 
+                                typeof playerData === 'object' &&
+                                playerData.name && 
+                                (playerData.score >= 0 || playerData.score === 0)) {
                                 activePlayers[playerName] = playerData;
+                                console.log('✓ Added player:', playerName, playerData);
+                            } else {
+                                console.log('✗ Filtered out invalid player:', playerName, playerData);
                             }
                         });
+                        console.log('Active players after filter:', activePlayers);
                         gameState.allPlayers = activePlayers;
+                        updatePlayersDisplay();
+                    } else {
+                        gameState.allPlayers = {};
                         updatePlayersDisplay();
                     }
                 });
@@ -1425,9 +1437,9 @@
                 if (gameState.currentPlayer && db && gameSessionId && firebaseReady) {
                     const playerPath = `gameSessions/${gameSessionId}/players/${gameState.currentPlayer}`;
                     
-                    // Use set(null) which is more reliable than remove()
+                    // Use remove() to completely delete the player record
                     try {
-                        db.ref(playerPath).set(null, function(error) {
+                        db.ref(playerPath).remove(function(error) {
                             if (error) {
                                 console.log('Player removal error:', error.message);
                             } else {
@@ -1435,7 +1447,7 @@
                             }
                         });
                     } catch (error) {
-                        console.log('Auto-cleanup:', error.message);
+                        console.log('Auto-cleanup beforeunload:', error.message);
                     }
                 }
             });
@@ -1444,7 +1456,7 @@
             window.addEventListener('unload', function() {
                 if (gameState.currentPlayer && db && gameSessionId && firebaseReady) {
                     try {
-                        db.ref(`gameSessions/${gameSessionId}/players/${gameState.currentPlayer}`).set(null);
+                        db.ref(`gameSessions/${gameSessionId}/players/${gameState.currentPlayer}`).remove();
                     } catch (error) {
                         console.log('Unload cleanup:', error.message);
                     }
@@ -1455,7 +1467,7 @@
             window.addEventListener('pagehide', function() {
                 if (gameState.currentPlayer && db && gameSessionId && firebaseReady) {
                     try {
-                        db.ref(`gameSessions/${gameSessionId}/players/${gameState.currentPlayer}`).set(null);
+                        db.ref(`gameSessions/${gameSessionId}/players/${gameState.currentPlayer}`).remove();
                     } catch (error) {
                         console.log('Pagehide cleanup:', error.message);
                     }
