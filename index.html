@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Word Unscramble Game</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js"></script>
     <style>
         * {
             margin: 0;
@@ -764,6 +767,31 @@
     </div>
 
     <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyA_H4c5K7L8M9N0O1P2Q3R4S5T6U7V8W9X",
+            authDomain: "word-unscramble-game.firebaseapp.com",
+            databaseURL: "https://word-unscramble-game-default-rtdb.firebaseio.com",
+            projectId: "word-unscramble-game",
+            storageBucket: "word-unscramble-game.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abc123def456"
+        };
+
+        // Initialize Firebase
+        let db = null;
+        let playersRef = null;
+        let gameSessionId = null;
+
+        try {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.database();
+            console.log("Firebase initialized successfully");
+        } catch (error) {
+            console.warn("Firebase initialization failed:", error.message);
+            console.log("Game will work in single-device mode");
+        }
+
         // Game Data
         const gameData = {
             1: {
@@ -1189,20 +1217,50 @@
             });
         }
 
-        // Local Storage Functions
+        // Database Functions - Firebase + Local Storage Fallback
+        function generateSessionId() {
+            return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+
         function savePlayersToStorage() {
+            // Save locally first (always)
             localStorage.setItem('wordGamePlayers', JSON.stringify(gameState.allPlayers));
+            
+            // If Firebase is available, also sync to database
+            if (db && gameSessionId) {
+                const updates = {};
+                Object.keys(gameState.allPlayers).forEach(playerName => {
+                    updates[`gameSessions/${gameSessionId}/players/${playerName}`] = gameState.allPlayers[playerName];
+                });
+                db.ref().update(updates).catch(error => {
+                    console.log('Firebase sync (non-critical):', error.message);
+                });
+            }
         }
 
         function loadPlayersFromStorage() {
-            const stored = localStorage.getItem('wordGamePlayers');
-            if (stored) {
-                gameState.allPlayers = JSON.parse(stored);
+            // Try Firebase first (if available and has session)
+            if (db && gameSessionId) {
+                db.ref(`gameSessions/${gameSessionId}/players`).on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        gameState.allPlayers = data;
+                        updatePlayersDisplay();
+                    }
+                });
+            } else {
+                // Fallback to local storage
+                const stored = localStorage.getItem('wordGamePlayers');
+                if (stored) {
+                    gameState.allPlayers = JSON.parse(stored);
+                }
             }
         }
 
         // Initialize game on page load
         document.addEventListener('DOMContentLoaded', function() {
+            // Generate a unique session ID for this game session
+            gameSessionId = generateSessionId();
             initGame();
         });
     </script>
