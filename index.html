@@ -811,22 +811,48 @@
                 </div>
 
                 <div id="adminContent" style="display: none;">
-                    <div style="margin-bottom: 20px;">
-                        <label style="font-weight: 600; display: block; margin-bottom: 5px;">Select Level:</label>
-                        <select id="adminLevelSelect" onchange="loadLevelWords()" style="width: 100%; padding: 8px;">
-                            <option value="1">Level 1 - Easy</option>
-                            <option value="2">Level 2 - Moderate</option>
-                            <option value="3">Level 3 - Difficult</option>
-                        </select>
+                    <!-- Admin Tabs -->
+                    <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #ddd;">
+                        <button id="tabWords" class="admin-tab" onclick="switchAdminTab('words')" style="flex: 1; padding: 10px; background: #667eea; color: white; border: none; cursor: pointer; border-radius: 5px 5px 0 0;">✏️ Edit Words</button>
+                        <button id="tabPlayers" class="admin-tab" onclick="switchAdminTab('players')" style="flex: 1; padding: 10px; background: #ddd; color: #333; border: none; cursor: pointer; border-radius: 5px 5px 0 0;">👥 Manage Players</button>
                     </div>
 
-                    <div id="wordsContainer" style="display: grid; gap: 15px;">
-                        <!-- Word forms will be generated here -->
+                    <!-- Words Tab -->
+                    <div id="adminWordsTab" style="display: block;">
+                        <div style="margin-bottom: 20px;">
+                            <label style="font-weight: 600; display: block; margin-bottom: 5px;">Select Level:</label>
+                            <select id="adminLevelSelect" onchange="loadLevelWords()" style="width: 100%; padding: 8px;">
+                                <option value="1">Level 1 - Easy</option>
+                                <option value="2">Level 2 - Moderate</option>
+                                <option value="3">Level 3 - Difficult</option>
+                            </select>
+                        </div>
+
+                        <div id="wordsContainer" style="display: grid; gap: 15px;">
+                            <!-- Word forms will be generated here -->
+                        </div>
+
+                        <div style="margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <button class="btn btn-submit" onclick="saveWords()" style="width: 100%;">💾 Save Changes</button>
+                            <button class="btn btn-skip" onclick="closeAdminPanel()" style="width: 100%;">Close</button>
+                        </div>
                     </div>
 
-                    <div style="margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                        <button class="btn btn-submit" onclick="saveWords()" style="width: 100%;">💾 Save Changes</button>
-                        <button class="btn btn-skip" onclick="closeAdminPanel()" style="width: 100%;">Close</button>
+                    <!-- Players Tab -->
+                    <div id="adminPlayersTab" style="display: none;">
+                        <h3 style="margin-bottom: 15px;">🧹 Remove Inactive Players</h3>
+                        
+                        <div style="margin-bottom: 15px; padding: 10px; background: #f0f0f0; border-radius: 5px;">
+                            <p style="margin-bottom: 10px;"><strong>Current Players:</strong></p>
+                            <div id="inactivePlayersList" style="display: grid; gap: 8px; margin-bottom: 10px;">
+                                <p style="color: #666;">Loading players...</p>
+                            </div>
+                            <button class="btn btn-submit" onclick="removeInactivePlayers()" style="width: 100%;">🗑️ Remove Selected Inactive Players</button>
+                        </div>
+
+                        <div style="margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <button class="btn btn-skip" onclick="closeAdminPanel()" style="width: 100%;">Close</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1035,6 +1061,128 @@
             console.log('Updated gameData:', gameData);
         }
 
+        // Admin Player Management Functions
+        function switchAdminTab(tabName) {
+            // Hide all tabs
+            document.getElementById('adminWordsTab').style.display = 'none';
+            document.getElementById('adminPlayersTab').style.display = 'none';
+            
+            // Deselect all tab buttons
+            document.getElementById('tabWords').style.background = '#ddd';
+            document.getElementById('tabWords').style.color = '#333';
+            document.getElementById('tabPlayers').style.background = '#ddd';
+            document.getElementById('tabPlayers').style.color = '#333';
+            
+            // Show selected tab and highlight button
+            if (tabName === 'words') {
+                document.getElementById('adminWordsTab').style.display = 'block';
+                document.getElementById('tabWords').style.background = '#667eea';
+                document.getElementById('tabWords').style.color = 'white';
+            } else if (tabName === 'players') {
+                document.getElementById('adminPlayersTab').style.display = 'block';
+                document.getElementById('tabPlayers').style.background = '#667eea';
+                document.getElementById('tabPlayers').style.color = 'white';
+                loadInactivePlayersList();
+            }
+        }
+
+        function loadInactivePlayersList() {
+            const container = document.getElementById('inactivePlayersList');
+            container.innerHTML = '';
+            
+            if (!gameState.allPlayers || Object.keys(gameState.allPlayers).length === 0) {
+                container.innerHTML = '<p style="color: #999;">No players in game session</p>';
+                return;
+            }
+
+            const now = new Date().getTime();
+            const INACTIVE_THRESHOLD = 30000; // 30 seconds
+            
+            let hasInactive = false;
+            
+            Object.entries(gameState.allPlayers).forEach(([playerName, playerData]) => {
+                const lastActive = playerData.lastActive || playerData.joinedAt || now;
+                const timeSinceActive = now - lastActive;
+                const isInactive = timeSinceActive > INACTIVE_THRESHOLD;
+                
+                const playerDiv = document.createElement('div');
+                playerDiv.style.display = 'flex';
+                playerDiv.style.alignItems = 'center';
+                playerDiv.style.padding = '10px';
+                playerDiv.style.backgroundColor = isInactive ? '#ffe6e6' : '#e6f3ff';
+                playerDiv.style.borderRadius = '5px';
+                playerDiv.style.gap = '10px';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = 'player-' + playerName;
+                checkbox.className = 'inactive-player-checkbox';
+                checkbox.checked = isInactive;
+                checkbox.disabled = !isInactive;
+                checkbox.style.cursor = isInactive ? 'pointer' : 'not-allowed';
+                
+                const label = document.createElement('label');
+                label.htmlFor = 'player-' + playerName;
+                label.style.flex = '1';
+                label.style.cursor = isInactive ? 'pointer' : 'not-allowed';
+                label.style.opacity = isInactive ? '1' : '0.6';
+                
+                const statusIcon = isInactive ? '⚠️' : '✓';
+                const statusText = isInactive ? 'INACTIVE' : 'ACTIVE';
+                const timeSinceText = Math.round(timeSinceActive / 1000) + 's ago';
+                
+                label.innerHTML = `${statusIcon} <strong>${playerName}</strong> (${statusText}) - Last seen: ${timeSinceText} - Score: ${playerData.score}`;
+                
+                playerDiv.appendChild(checkbox);
+                playerDiv.appendChild(label);
+                container.appendChild(playerDiv);
+                
+                if (isInactive) hasInactive = true;
+            });
+            
+            if (!hasInactive) {
+                container.innerHTML += '<p style="color: #666; margin-top: 10px;">✓ All players are active!</p>';
+            }
+        }
+
+        function removeInactivePlayers() {
+            const checkboxes = document.querySelectorAll('.inactive-player-checkbox:checked');
+            
+            if (checkboxes.length === 0) {
+                alert('Please select at least one player to remove');
+                return;
+            }
+            
+            const playersToRemove = Array.from(checkboxes).map(cb => cb.id.replace('player-', ''));
+            
+            if (!confirm(`Remove ${playersToRemove.length} inactive player(s)?\n\n${playersToRemove.join(', ')}`)) {
+                return;
+            }
+            
+            playersToRemove.forEach(playerName => {
+                // Remove from local state
+                delete gameState.allPlayers[playerName];
+                
+                // Remove from Firebase
+                if (db && gameSessionId && firebaseReady) {
+                    db.ref(`gameSessions/${gameSessionId}/players/${playerName}`).remove()
+                        .then(() => {
+                            console.log('✓ Removed player:', playerName);
+                        })
+                        .catch(error => {
+                            console.log('Error removing player:', error.message);
+                        });
+                }
+            });
+            
+            // Save to storage
+            savePlayersToStorage();
+            
+            // Refresh the list
+            alert(`✅ Removed ${playersToRemove.length} player(s)!`);
+            loadInactivePlayersList();
+            updatePlayersDisplay();
+        }
 
         function setPlayerName() {
             const name = document.getElementById('playerNameInput').value.trim();
