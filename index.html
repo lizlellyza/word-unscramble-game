@@ -1046,12 +1046,15 @@
             gameState.currentPlayer = name;
             document.getElementById('currentPlayerName').textContent = name;
 
-            // Add player to all players list
+            // Add player to all players list with timestamps
             if (!gameState.allPlayers[name]) {
+                const now = new Date().getTime();
                 gameState.allPlayers[name] = {
                     name: name,
                     score: 0,
-                    level: null
+                    level: null,
+                    joinedAt: now,
+                    lastActive: now
                 };
             }
 
@@ -1346,20 +1349,40 @@
                     if (data && typeof data === 'object') {
                         // Filter out null, undefined, or invalid player data
                         const activePlayers = {};
+                        const now = new Date().getTime();
+                        const TIMEOUT_MS = 30000; // Remove players inactive for 30+ seconds
+                        
                         Object.entries(data).forEach(([playerName, playerData]) => {
-                            // Only include players with valid data
-                            if (playerData !== null && 
-                                playerData !== undefined && 
-                                typeof playerData === 'object' &&
-                                playerData.name && 
-                                (playerData.score >= 0 || playerData.score === 0)) {
-                                activePlayers[playerName] = playerData;
-                                console.log('✓ Added player:', playerName, playerData);
-                            } else {
-                                console.log('✗ Filtered out invalid player:', playerName, playerData);
+                            // Strictly validate player data
+                            if (!playerData || 
+                                playerData === null || 
+                                typeof playerData !== 'object' ||
+                                !playerData.name ||
+                                playerData.score === null ||
+                                playerData.score === undefined) {
+                                console.log('✗ Rejected (invalid):', playerName, playerData);
+                                return; // Skip this player
                             }
+                            
+                            // Check if player is still active (within 30 seconds)
+                            const lastActive = playerData.lastActive || playerData.joinedAt || now;
+                            const timeSinceActive = now - lastActive;
+                            
+                            if (timeSinceActive > TIMEOUT_MS) {
+                                console.log('✗ Rejected (inactive >30s):', playerName, 'Last active:', timeSinceActive + 'ms ago');
+                                // Try to remove this stale player
+                                db.ref(`gameSessions/${gameSessionId}/players/${playerName}`).remove().catch(err => {
+                                    console.log('Stale player cleanup error:', err);
+                                });
+                                return; // Skip this player
+                            }
+                            
+                            // Player passed all checks - add to active list
+                            activePlayers[playerName] = playerData;
+                            console.log('✓ Added player:', playerName, 'Score:', playerData.score, 'Last active:', timeSinceActive + 'ms ago');
                         });
-                        console.log('Active players after filter:', activePlayers);
+                        
+                        console.log('Active players after filter:', Object.keys(activePlayers));
                         gameState.allPlayers = activePlayers;
                         updatePlayersDisplay();
                     } else {
