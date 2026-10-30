@@ -1486,6 +1486,24 @@
             setTimeout(function() {
                 initGame();
             }, 500);
+
+            // Remove player from leaderboard when they close/leave the page
+            window.addEventListener('beforeunload', function() {
+                if (gameState.currentPlayer && db && gameSessionId && firebaseReady) {
+                    db.ref(`gameSessions/${gameSessionId}/players/${gameState.currentPlayer}`).remove().catch(error => {
+                        console.log('Auto-cleanup (non-critical):', error.message);
+                    });
+                }
+            });
+
+            // Also handle page visibility change (tab switch, minimize, etc)
+            document.addEventListener('visibilitychange', function() {
+                if (document.hidden && gameState.currentPlayer && db && gameSessionId && firebaseReady) {
+                    // Optional: Remove player when tab is hidden/minimized
+                    // Uncomment below if you want this behavior:
+                    // db.ref(`gameSessions/${gameSessionId}/players/${gameState.currentPlayer}`).remove();
+                }
+            });
         });
     </script>
 </body>
