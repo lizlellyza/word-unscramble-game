@@ -952,7 +952,15 @@
 
         // Initialize on page load
         function initGame() {
-            showWelcomeModal();
+            // Only show welcome modal on first visit
+            const hasSeenWelcome = localStorage.getItem('wordGameWelcomeSeen');
+            if (!hasSeenWelcome) {
+                showWelcomeModal();
+                localStorage.setItem('wordGameWelcomeSeen', 'true');
+            } else {
+                // If player has seen welcome before, go straight to name modal
+                showNameModal();
+            }
             loadPlayersFromStorage();
         }
 
@@ -1116,16 +1124,16 @@
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
                 checkbox.id = 'player-' + playerName;
-                checkbox.className = 'inactive-player-checkbox';
-                checkbox.checked = isInactive;
-                checkbox.disabled = !isInactive;
-                checkbox.style.cursor = isInactive ? 'pointer' : 'not-allowed';
+                checkbox.className = 'player-checkbox';
+                checkbox.checked = isInactive; // Auto-check inactive players
+                checkbox.disabled = false; // Allow removing ANY player
+                checkbox.style.cursor = 'pointer';
                 
                 const label = document.createElement('label');
                 label.htmlFor = 'player-' + playerName;
                 label.style.flex = '1';
-                label.style.cursor = isInactive ? 'pointer' : 'not-allowed';
-                label.style.opacity = isInactive ? '1' : '0.6';
+                label.style.cursor = 'pointer';
+                label.style.opacity = '1';
                 
                 const statusIcon = isInactive ? '⚠️' : '✓';
                 const statusText = isInactive ? 'INACTIVE' : 'ACTIVE';
@@ -1141,12 +1149,12 @@
             });
             
             if (!hasInactive) {
-                container.innerHTML += '<p style="color: #666; margin-top: 10px;">✓ All players are active!</p>';
+                container.innerHTML += '<p style="color: #666; margin-top: 10px;">✓ All players are active! (You can still remove any player if needed)</p>';
             }
         }
 
         function removeInactivePlayers() {
-            const checkboxes = document.querySelectorAll('.inactive-player-checkbox:checked');
+            const checkboxes = document.querySelectorAll('.player-checkbox:checked');
             
             if (checkboxes.length === 0) {
                 alert('Please select at least one player to remove');
