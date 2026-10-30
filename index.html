@@ -748,7 +748,8 @@
 
             <div class="word-display">
                 <div class="scrambled-word" id="scrambledWord">EXAMPLE</div>
-                <div class="hint" id="hint">Guess the word!</div>
+                <div class="hint" id="hint" style="display: none;"></div>
+                <button class="btn-hint" id="hintBtn" onclick="toggleHint()" style="background: #ff9800; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 0.95em; margin-top: 10px; width: 100%;">💡 Show Hint</button>
             </div>
 
             <div class="feedback" id="feedback"></div>
@@ -1254,12 +1255,32 @@
             const word = gameState.words[gameState.currentWordIndex];
             document.getElementById('scrambledWord').textContent = word.scrambled;
             document.getElementById('hint').textContent = word.hint;
+            document.getElementById('hint').style.display = 'none'; // Hide hint initially
+            document.getElementById('hintBtn').textContent = '💡 Show Hint'; // Reset button
+            document.getElementById('hintBtn').style.background = '#ff9800'; // Reset button color
             document.getElementById('answerInput').value = '';
             document.getElementById('feedback').classList.remove('show', 'correct', 'incorrect');
 
             updateProgress();
             updateCorrectAnswersDisplay();
             document.getElementById('answerInput').focus();
+        }
+
+        function toggleHint() {
+            const hint = document.getElementById('hint');
+            const hintBtn = document.getElementById('hintBtn');
+            
+            if (hint.style.display === 'none' || hint.style.display === '') {
+                // Show hint
+                hint.style.display = 'block';
+                hintBtn.textContent = '💡 Hide Hint';
+                hintBtn.style.background = '#4caf50';
+            } else {
+                // Hide hint
+                hint.style.display = 'none';
+                hintBtn.textContent = '💡 Show Hint';
+                hintBtn.style.background = '#ff9800';
+            }
         }
 
         function updateProgress() {
