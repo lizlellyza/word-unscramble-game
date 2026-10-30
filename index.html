@@ -788,18 +788,6 @@
 
             <div class="results-list" id="resultsList"></div>
 
-            <div class="email-section">
-                <h3>📧 Email Your Results</h3>
-                <input 
-                    type="email" 
-                    id="emailInput" 
-                    placeholder="Enter your email address"
-                    value="lizlellyza.ugot@amadeus.com"
-                >
-                <button class="btn-email" onclick="sendResults()">Send Results</button>
-                <div class="message" id="emailMessage"></div>
-            </div>
-
             <div style="margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                 <button class="btn btn-submit" onclick="resetGameToMenu()" style="width: 100%;">Main Menu</button>
                 <button class="btn btn-skip" onclick="location.reload()" style="width: 100%;">Restart Game</button>
@@ -1316,7 +1304,6 @@
             document.getElementById('levelSelector').style.display = 'grid';
             document.getElementById('gameArea').classList.remove('active');
             document.getElementById('resultsSection').classList.remove('active');
-            document.getElementById('emailMessage').classList.remove('show');
         }
 
         function resetGame() {
@@ -1341,79 +1328,6 @@
             document.getElementById('levelSelector').style.display = 'none';
             document.getElementById('gameArea').classList.remove('active');
             document.getElementById('resultsSection').classList.remove('active');
-            document.getElementById('emailMessage').classList.remove('show');
-        }
-
-        function sendResults() {
-            const email = document.getElementById('emailInput').value.trim();
-            const messageDiv = document.getElementById('emailMessage');
-
-            if (!email) {
-                messageDiv.textContent = 'Please enter an email address';
-                messageDiv.classList.add('show', 'error');
-                return;
-            }
-
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(email)) {
-                messageDiv.textContent = 'Please enter a valid email address';
-                messageDiv.classList.add('show', 'error');
-                return;
-            }
-
-            // Prepare email content
-            const levelName = gameData[gameState.currentLevel].name;
-            const score = gameState.correct;
-            const total = gameState.words.length;
-            const percentage = Math.round((score / total) * 100);
-
-            let resultsText = `Word Unscramble Game - Level ${gameState.currentLevel} (${levelName})\n`;
-            resultsText += `Player: ${gameState.currentPlayer}\n`;
-            resultsText += `Score: ${score}/${total} (${percentage}%)\n\n`;
-            resultsText += 'Results:\n';
-            resultsText += '--------\n';
-
-            gameState.results.forEach((result, index) => {
-                resultsText += `${index + 1}. ${result.word}\n`;
-                resultsText += `   Your answer: ${result.userAnswer}\n`;
-                resultsText += `   Status: ${result.correct ? 'CORRECT ✓' : 'INCORRECT ✗'}\n\n`;
-            });
-
-            resultsText += '\nAll Players Scores:\n';
-            resultsText += '------------------\n';
-            const sortedPlayers = Object.values(gameState.allPlayers)
-                .sort((a, b) => b.score - a.score);
-            sortedPlayers.forEach((player, index) => {
-                resultsText += `${index + 1}. ${player.name}: ${player.score} points\n`;
-            });
-
-            // Send email via backend
-            fetch('https://formspree.io/f/mgvvgjra', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    email: email,
-                    message: resultsText,
-                    subject: `Word Unscramble Game Results - ${gameState.currentPlayer} - Level ${gameState.currentLevel}`
-                })
-            })
-            .then(response => {
-                if (response.ok) {
-                    messageDiv.textContent = '✓ Results sent successfully!';
-                    messageDiv.classList.remove('error');
-                    messageDiv.classList.add('show', 'success');
-                } else {
-                    throw new Error('Failed to send');
-                }
-            })
-            .catch(error => {
-                messageDiv.textContent = 'Note: Email service unavailable. Try again later.';
-                messageDiv.classList.remove('success');
-                messageDiv.classList.add('show', 'error');
-                console.log('Email data would be:', resultsText);
-            });
         }
 
         // Database Functions - Firebase + Local Storage Fallback
@@ -1430,10 +1344,29 @@
                     const data = snapshot.val();
                     if (data) {
                         console.log('Players update from Firebase:', data);
-                        gameState.allPlayers = data;
+                        // Filter out players with null/undefined data
+                        const activePlayers = {};
+                        Object.entries(data).forEach(([playerName, playerData]) => {
+                            if (playerData && playerData.name && playerData.score !== undefined) {
+                                activePlayers[playerName] = playerData;
+                            }
+                        });
+                        gameState.allPlayers = activePlayers;
                         updatePlayersDisplay();
                     }
                 });
+                
+                // Send heartbeat every 5 seconds to show player is active
+                setInterval(() => {
+                    if (gameState.currentPlayer && firebaseReady) {
+                        const playerPath = `gameSessions/${gameSessionId}/players/${gameState.currentPlayer}`;
+                        db.ref(playerPath).update({ 
+                            lastActive: new Date().getTime() 
+                        }).catch(error => {
+                            console.log('Heartbeat send (non-critical):', error.message);
+                        });
+                    }
+                }, 5000);
             } else {
                 console.log('Firebase not ready for sync');
             }
@@ -1490,18 +1423,42 @@
             // Remove player from leaderboard when they close/leave the page
             window.addEventListener('beforeunload', function() {
                 if (gameState.currentPlayer && db && gameSessionId && firebaseReady) {
-                    db.ref(`gameSessions/${gameSessionId}/players/${gameState.currentPlayer}`).remove().catch(error => {
-                        console.log('Auto-cleanup (non-critical):', error.message);
-                    });
+                    const playerPath = `gameSessions/${gameSessionId}/players/${gameState.currentPlayer}`;
+                    
+                    // Use set(null) which is more reliable than remove()
+                    try {
+                        db.ref(playerPath).set(null, function(error) {
+                            if (error) {
+                                console.log('Player removal error:', error.message);
+                            } else {
+                                console.log('Player removed successfully:', gameState.currentPlayer);
+                            }
+                        });
+                    } catch (error) {
+                        console.log('Auto-cleanup:', error.message);
+                    }
                 }
             });
 
-            // Also handle page visibility change (tab switch, minimize, etc)
-            document.addEventListener('visibilitychange', function() {
-                if (document.hidden && gameState.currentPlayer && db && gameSessionId && firebaseReady) {
-                    // Optional: Remove player when tab is hidden/minimized
-                    // Uncomment below if you want this behavior:
-                    // db.ref(`gameSessions/${gameSessionId}/players/${gameState.currentPlayer}`).remove();
+            // Also remove player if they navigate away
+            window.addEventListener('unload', function() {
+                if (gameState.currentPlayer && db && gameSessionId && firebaseReady) {
+                    try {
+                        db.ref(`gameSessions/${gameSessionId}/players/${gameState.currentPlayer}`).set(null);
+                    } catch (error) {
+                        console.log('Unload cleanup:', error.message);
+                    }
+                }
+            });
+
+            // Detect when user closes browser tab (not 100% reliable but helps)
+            window.addEventListener('pagehide', function() {
+                if (gameState.currentPlayer && db && gameSessionId && firebaseReady) {
+                    try {
+                        db.ref(`gameSessions/${gameSessionId}/players/${gameState.currentPlayer}`).set(null);
+                    } catch (error) {
+                        console.log('Pagehide cleanup:', error.message);
+                    }
                 }
             });
         });
