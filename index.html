@@ -945,7 +945,9 @@
             words: [],
             currentPlayer: null,
             allPlayers: {},
-            correctAnsweredBy: {}
+            correctAnsweredBy: {},
+            levelStartTime: null,
+            playerFirstAnswerTime: {} // Track when each player first answers
         };
 
         // Admin Panel Configuration
@@ -1232,6 +1234,8 @@
             gameState.results = [];
             gameState.words = JSON.parse(JSON.stringify(gameData[level].words));
             gameState.correctAnsweredBy = {};
+            gameState.levelStartTime = new Date().getTime(); // Start timer when level begins
+            gameState.playerFirstAnswerTime = {}; // Reset player answer times
 
             // Update player level
             gameState.allPlayers[gameState.currentPlayer].level = level;
@@ -1337,13 +1341,13 @@
                 gameState.correctAnsweredBy[wordIndex] = {};
             }
 
-            if (userAnswer === correctAnswer) {
-                // Check if this is the first time anyone got this word correct
-                const isFirst = !Object.values(gameState.correctAnsweredBy[wordIndex]).some(v => v === true);
+            // Record when this player first answers (only on first submission per level)
+            if (!gameState.playerFirstAnswerTime[gameState.currentPlayer]) {
+                gameState.playerFirstAnswerTime[gameState.currentPlayer] = new Date().getTime();
+            }
 
-                feedback.textContent = isFirst 
-                    ? `🎉 ${gameState.currentPlayer} got it FIRST! The answer is: ${correctAnswer}`
-                    : `✓ Correct! (${gameState.currentPlayer})`;
+            if (userAnswer === correctAnswer) {
+                feedback.textContent = `✓ Correct! (${gameState.currentPlayer})`;
                 feedback.classList.add('show', 'correct');
                 gameState.correct++;
                 gameState.correctAnsweredBy[wordIndex][gameState.currentPlayer] = true;
@@ -1441,17 +1445,34 @@
             const leaderboardContent = document.getElementById('leaderboardContent');
             leaderboardContent.innerHTML = '';
 
+            // Sort players by score, then by answer time (who answered first)
             const sortedPlayers = Object.values(gameState.allPlayers)
-                .sort((a, b) => b.score - a.score);
+                .map(player => ({
+                    ...player,
+                    answerTime: gameState.playerFirstAnswerTime[player.name] || Infinity
+                }))
+                .sort((a, b) => {
+                    // Primary: by score (highest first)
+                    if (b.score !== a.score) return b.score - a.score;
+                    // Secondary: by answer time (earliest first)
+                    return a.answerTime - b.answerTime;
+                });
 
             sortedPlayers.forEach((player, index) => {
                 const div = document.createElement('div');
                 const rankClass = index === 0 ? 'first' : index === 1 ? 'second' : index === 2 ? 'third' : '';
                 div.className = `leaderboard-entry ${rankClass}`;
+                
+                // Calculate response time in seconds
+                const responseTime = gameState.playerFirstAnswerTime[player.name] 
+                    ? ((gameState.playerFirstAnswerTime[player.name] - gameState.levelStartTime) / 1000).toFixed(1)
+                    : '—';
+                
                 div.innerHTML = `
                     <span class="leaderboard-rank ${rankClass}"></span>
                     <span class="leaderboard-player">${player.name}</span>
                     <span class="leaderboard-score">${player.score}</span>
+                    <span style="font-size: 0.85em; color: #666;">⏱ ${responseTime}s</span>
                 `;
                 leaderboardContent.appendChild(div);
             });
@@ -1479,6 +1500,8 @@
             gameState.results = [];
             gameState.words = [];
             gameState.correctAnsweredBy = {};
+            gameState.levelStartTime = null;
+            gameState.playerFirstAnswerTime = {};
 
             document.getElementById('levelSelector').style.display = 'grid';
             document.getElementById('gameArea').classList.remove('active');
