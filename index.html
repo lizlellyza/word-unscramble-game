@@ -870,7 +870,7 @@
 
             <div style="margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                 <button class="btn btn-submit" onclick="resetGameToMenu()" style="width: 100%;">Main Menu</button>
-                <button class="btn btn-skip" onclick="location.reload()" style="width: 100%;">Restart Game</button>
+                <button class="btn btn-skip" onclick="startLevel(gameState.currentLevel)" style="width: 100%;">Play Again</button>
             </div>
         </div>
 
@@ -990,7 +990,12 @@
                     { scrambled: 'PIRT', answer: 'TRIP', hint: 'A journey to another place' },
                     { scrambled: 'PAMS', answer: 'MAPS', hint: 'Helps you find your destination' },
                     { scrambled: 'RDAC', answer: 'CARD', hint: 'You might use this to pay while traveling' },
-                    { scrambled: 'OTPR', answer: 'PORT', hint: 'A place where ships arrive and depart' }
+                    { scrambled: 'OTPR', answer: 'PORT', hint: 'A place where ships arrive and depart' },
+                    { scrambled: 'XITA', answer: 'TAXI', hint: 'A car you can hire to take you somewhere' },
+                    { scrambled: 'TEAG', answer: 'GATE', hint: 'Where passengers wait to board' },
+                    { scrambled: 'BCA', answer: 'CAB', hint: 'Another word for a taxi' },
+                    { scrambled: 'NATIR', answer: 'TRAIN', hint: 'A vehicle that runs on railway tracks' },
+                    { scrambled: 'SBU', answer: 'BUS', hint: 'A road vehicle that carries many passengers' }
                 ]
             },
             2: {
@@ -1000,7 +1005,12 @@
                     { scrambled: 'KTEICT', answer: 'TICKET', hint: "Proof that you're booked to travel" },
                     { scrambled: 'GENTSA', answer: 'AGENTS', hint: 'They can help arrange travel' },
                     { scrambled: 'IKOSK', answer: 'KIOSK', hint: 'Self-service machine found at airports' },
-                    { scrambled: 'UIQEE', answer: 'QUEUE', hint: 'A line of passengers waiting' }
+                    { scrambled: 'UEQUE', answer: 'QUEUE', hint: 'A line of passengers waiting' },
+                    { scrambled: 'BICAN', answer: 'CABIN', hint: 'The passenger area inside an aircraft' },
+                    { scrambled: 'YAWUNR', answer: 'RUNWAY', hint: 'The strip where aircraft take off and land' },
+                    { scrambled: 'TOLPI', answer: 'PILOT', hint: 'The person who flies an aircraft' },
+                    { scrambled: 'GYAVOE', answer: 'VOYAGE', hint: 'A long journey, often by sea' },
+                    { scrambled: 'STUOSMC', answer: 'CUSTOMS', hint: 'Where travelers declare goods at a border' }
                 ]
             },
             3: {
@@ -1010,10 +1020,58 @@
                     { scrambled: 'RUTDEPAER', answer: 'DEPARTURE', hint: 'When your flight leaves' },
                     { scrambled: 'RIFCTAAR', answer: 'AIRCRAFT', hint: 'The vehicle used to fly passengers' },
                     { scrambled: 'DASUAME', answer: 'AMADEUS', hint: 'where you work' },
-                    { scrambled: 'SROIPTAS', answer: 'PASSPORT', hint: 'Required for most international travel' }
+                    { scrambled: 'SROPPATS', answer: 'PASSPORT', hint: 'Required for most international travel' },
+                    { scrambled: 'TNASTIR', answer: 'TRANSIT', hint: 'Travel through or across a place' },
+                    { scrambled: 'TADENOSINTI', answer: 'DESTINATION', hint: 'The place you are traveling to' },
+                    { scrambled: 'NOCETCINON', answer: 'CONNECTION', hint: 'A transfer between two travel services' },
+                    { scrambled: 'LIMREANT', answer: 'TERMINAL', hint: 'A passenger building at an airport' },
+                    { scrambled: 'NNOIATVIGA', answer: 'NAVIGATION', hint: 'Finding and following a route' }
                 ]
             }
         };
+
+        function getNextWordsForLevel(level) {
+            const batchSize = 5;
+            const storageKey = 'wordGameWordDecks';
+            let decks = {};
+
+            try {
+                decks = JSON.parse(localStorage.getItem(storageKey) || '{}');
+            } catch (error) {
+                decks = {};
+            }
+
+            const deck = decks[level] && Array.isArray(decks[level].remaining)
+                ? decks[level]
+                : { remaining: [], previousBatch: [] };
+
+            if (deck.remaining.length < batchSize) {
+                const shuffledWords = [...gameData[level].words];
+                for (let index = shuffledWords.length - 1; index > 0; index--) {
+                    const randomIndex = Math.floor(Math.random() * (index + 1));
+                    [shuffledWords[index], shuffledWords[randomIndex]] = [shuffledWords[randomIndex], shuffledWords[index]];
+                }
+
+                const previousBatch = Array.isArray(deck.previousBatch) ? deck.previousBatch : [];
+                const nextBatch = new Set(shuffledWords.slice(0, batchSize).map(word => word.answer));
+                if (previousBatch.length === batchSize && previousBatch.every(answer => nextBatch.has(answer))) {
+                    [shuffledWords[0], shuffledWords[batchSize]] = [shuffledWords[batchSize], shuffledWords[0]];
+                }
+                deck.remaining = shuffledWords;
+            }
+
+            const selectedWords = deck.remaining.splice(0, batchSize);
+            deck.previousBatch = selectedWords.map(word => word.answer);
+            decks[level] = deck;
+
+            try {
+                localStorage.setItem(storageKey, JSON.stringify(decks));
+            } catch (error) {
+                console.warn('Could not save word rotation:', error.message);
+            }
+
+            return JSON.parse(JSON.stringify(selectedWords));
+        }
 
         // Game State
         let gameState = {
@@ -1312,7 +1370,7 @@
             gameState.correct = 0;
             gameState.skipped = 0;
             gameState.results = [];
-            gameState.words = JSON.parse(JSON.stringify(gameData[level].words));
+            gameState.words = getNextWordsForLevel(level);
             gameState.correctAnsweredBy = {};
             gameState.levelStartTime = new Date().getTime(); // Start timer when level begins
             gameState.playerFirstAnswerTime = {}; // Reset player answer times
