@@ -276,6 +276,29 @@
             margin-bottom: 25px;
         }
 
+        .word-actions {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .word-actions .btn {
+            width: 100%;
+            min-width: 0;
+            padding: 10px 6px;
+            font-size: 0.9em;
+        }
+
+        .btn-hint {
+            background: #ff9800;
+            color: white;
+        }
+
+        .btn-hint:hover {
+            background: #f57c00;
+        }
+
         .scrambled-word {
             font-size: 2.5em;
             color: #667eea;
@@ -829,7 +852,10 @@
             <div class="word-display">
                 <div class="scrambled-word" id="scrambledWord">EXAMPLE</div>
                 <div class="hint" id="hint" style="display: none;"></div>
-                <button class="btn-hint" id="hintBtn" onclick="toggleHint()" style="background: #ff9800; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 0.95em; margin-top: 10px; width: 100%;">💡 Show Hint</button>
+                <div class="word-actions">
+                    <button class="btn btn-hint" id="hintBtn" onclick="toggleHint()">💡 Show Hint</button>
+                    <button class="btn btn-skip" onclick="shuffleCurrentWord()">🔀 Shuffle Letters</button>
+                </div>
             </div>
 
             <div class="feedback" id="feedback"></div>
@@ -1422,6 +1448,37 @@
                 hint.style.display = 'none';
                 hintBtn.textContent = '💡 Show Hint';
                 hintBtn.style.background = '#ff9800';
+            }
+        }
+
+        function shuffleCurrentWord() {
+            const currentWord = gameState.words[gameState.currentWordIndex];
+            if (!currentWord) return;
+
+            const display = document.getElementById('scrambledWord');
+            const answer = currentWord.answer;
+            const previousArrangement = display.textContent;
+            const letters = answer.split('');
+
+            for (let attempt = 0; attempt < 20; attempt++) {
+                for (let index = letters.length - 1; index > 0; index--) {
+                    const randomIndex = Math.floor(Math.random() * (index + 1));
+                    [letters[index], letters[randomIndex]] = [letters[randomIndex], letters[index]];
+                }
+
+                const shuffledWord = letters.join('');
+                if (shuffledWord !== answer && shuffledWord !== previousArrangement) {
+                    display.textContent = shuffledWord;
+                    return;
+                }
+            }
+
+            for (let offset = 1; offset < answer.length; offset++) {
+                const rotatedWord = answer.slice(offset) + answer.slice(0, offset);
+                if (rotatedWord !== answer && rotatedWord !== previousArrangement) {
+                    display.textContent = rotatedWord;
+                    return;
+                }
             }
         }
 
