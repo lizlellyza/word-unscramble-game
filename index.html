@@ -721,7 +721,14 @@
 
             .score-item {
                 display: block;
-                margin: 10px 0;
+                margin: 0;
+            }
+
+            .score-board {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 12px;
+                padding: 14px;
             }
 
             .game-header {
@@ -844,6 +851,10 @@
                 <div class="score-item">
                     <div class="score-label">Skipped</div>
                     <div class="score-value" id="skippedCount">0</div>
+                </div>
+                <div class="score-item">
+                    <div class="score-label">Timer</div>
+                    <div class="score-value" id="gameTimer">00:00</div>
                 </div>
             </div>
 
@@ -1113,6 +1124,23 @@
             levelStartTime: null,
             playerFirstAnswerTime: {} // Track when each player first answers
         };
+        let levelTimerInterval = null;
+
+        function updateLevelTimer() {
+            if (gameState.levelStartTime === null) return;
+
+            const elapsedSeconds = Math.floor((Date.now() - gameState.levelStartTime) / 1000);
+            const minutes = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
+            const seconds = String(elapsedSeconds % 60).padStart(2, '0');
+            document.getElementById('gameTimer').textContent = `${minutes}:${seconds}`;
+        }
+
+        function stopLevelTimer() {
+            if (levelTimerInterval !== null) {
+                clearInterval(levelTimerInterval);
+                levelTimerInterval = null;
+            }
+        }
 
         // Admin Panel Configuration
         const ADMIN_PASSWORD = 'Kokey0798!';
@@ -1398,8 +1426,12 @@
             gameState.results = [];
             gameState.words = getNextWordsForLevel(level);
             gameState.correctAnsweredBy = {};
-            gameState.levelStartTime = new Date().getTime(); // Start timer when level begins
+            stopLevelTimer();
+            gameState.levelStartTime = Date.now();
             gameState.playerFirstAnswerTime = {}; // Reset player answer times
+            document.getElementById('gameTimer').textContent = '00:00';
+            updateLevelTimer();
+            levelTimerInterval = setInterval(updateLevelTimer, 1000);
 
             // Update player level
             gameState.allPlayers[gameState.currentPlayer].level = level;
@@ -1633,6 +1665,8 @@
         }
 
         function showResults() {
+            stopLevelTimer();
+            updateLevelTimer();
             document.getElementById('gameArea').classList.remove('active');
             document.getElementById('resultsSection').classList.add('active');
 
@@ -1688,6 +1722,7 @@
         }
 
         function resetGameToMenu() {
+            stopLevelTimer();
             gameState.currentLevel = null;
             gameState.currentWordIndex = 0;
             gameState.correct = 0;
@@ -1697,6 +1732,7 @@
             gameState.correctAnsweredBy = {};
             gameState.levelStartTime = null;
             gameState.playerFirstAnswerTime = {};
+            document.getElementById('gameTimer').textContent = '00:00';
 
             document.getElementById('levelSelector').style.display = 'grid';
             document.getElementById('gameArea').classList.remove('active');
@@ -1704,6 +1740,8 @@
         }
 
         function resetGame() {
+            stopLevelTimer();
+            document.getElementById('gameTimer').textContent = '00:00';
             // Clear only game session data, preserve all players
             const preservedPlayers = gameState.allPlayers;
             
