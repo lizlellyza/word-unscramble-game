@@ -122,6 +122,29 @@
             margin-bottom: 30px;
         }
 
+        .menu-players-board {
+            display: none;
+            margin-top: 20px;
+            padding: 18px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .menu-players-board h2 {
+            color: #333;
+            font-size: 1.2em;
+            margin-bottom: 12px;
+        }
+
+        #menuPlayersScoreBoard {
+            display: grid;
+            gap: 8px;
+        }
+
+        #menuPlayersScoreBoard .player-score-item {
+            margin-bottom: 0;
+        }
+
         .level-btn {
             padding: 15px 20px;
             font-size: 1.1em;
@@ -819,6 +842,11 @@
             </button>
         </div>
 
+        <section class="menu-players-board" id="menuPlayersBoard" aria-labelledby="menuPlayersHeading">
+            <h2 id="menuPlayersHeading">Players &amp; Scores</h2>
+            <div id="menuPlayersScoreBoard"></div>
+        </section>
+
         <!-- Game Area -->
         <div class="game-area" id="gameArea">
             <div class="game-header">
@@ -1416,6 +1444,8 @@
             
             document.getElementById('nameModal').classList.add('hidden');
             document.getElementById('levelSelector').style.display = 'grid';
+            document.getElementById('menuPlayersBoard').style.display = 'block';
+            updatePlayersDisplay();
         }
 
         function startLevel(level) {
@@ -1439,6 +1469,7 @@
 
             // Hide level selector and show game area
             document.getElementById('levelSelector').style.display = 'none';
+            document.getElementById('menuPlayersBoard').style.display = 'none';
             document.getElementById('gameArea').classList.add('active');
             document.getElementById('resultsSection').classList.remove('active');
             document.getElementById('levelDisplay').textContent = level;
@@ -1639,28 +1670,37 @@
         }
 
         function updatePlayersDisplay() {
-            const scoreboard = document.getElementById('playersScoreBoard');
-            if (!scoreboard) return;
-            
-            scoreboard.innerHTML = '';
+            const scoreboards = [
+                document.getElementById('playersScoreBoard'),
+                document.getElementById('menuPlayersScoreBoard')
+            ].filter(Boolean);
+            if (scoreboards.length === 0) return;
+
+            scoreboards.forEach(scoreboard => {
+                scoreboard.innerHTML = '';
+            });
 
             // Sort players by score
             const sortedPlayers = Object.values(gameState.allPlayers)
                 .sort((a, b) => b.score - a.score);
 
             if (sortedPlayers.length === 0) {
-                scoreboard.innerHTML = '<p style="color: #666;">No players yet. Start playing!</p>';
+                scoreboards.forEach(scoreboard => {
+                    scoreboard.innerHTML = '<p style="color: #666;">No players yet. Start playing!</p>';
+                });
                 return;
             }
 
             sortedPlayers.forEach(player => {
-                const div = document.createElement('div');
-                div.className = `player-score-item ${player.name === gameState.currentPlayer ? 'current' : ''}`;
-                div.innerHTML = `
-                    <span class="player-name">${player.name}</span>
-                    <span class="player-score">${player.score}</span>
-                `;
-                scoreboard.appendChild(div);
+                scoreboards.forEach(scoreboard => {
+                    const div = document.createElement('div');
+                    div.className = `player-score-item ${player.name === gameState.currentPlayer ? 'current' : ''}`;
+                    div.innerHTML = `
+                        <span class="player-name">${player.name}</span>
+                        <span class="player-score">${player.score}</span>
+                    `;
+                    scoreboard.appendChild(div);
+                });
             });
         }
 
@@ -1735,6 +1775,7 @@
             document.getElementById('gameTimer').textContent = '00:00';
 
             document.getElementById('levelSelector').style.display = 'grid';
+            document.getElementById('menuPlayersBoard').style.display = 'block';
             document.getElementById('gameArea').classList.remove('active');
             document.getElementById('resultsSection').classList.remove('active');
         }
@@ -1761,6 +1802,7 @@
             document.getElementById('playerNameInput').value = '';
             document.getElementById('playerNameInput').focus();
             document.getElementById('levelSelector').style.display = 'none';
+            document.getElementById('menuPlayersBoard').style.display = 'none';
             document.getElementById('gameArea').classList.remove('active');
             document.getElementById('resultsSection').classList.remove('active');
         }
@@ -1863,8 +1905,10 @@
                     const data = snapshot.val();
                     if (data) {
                         gameState.allPlayers = data;
-                        updatePlayersDisplay();
+                    } else {
+                        gameState.allPlayers = {};
                     }
+                    updatePlayersDisplay();
                 });
             } else {
                 // Fallback to local storage
@@ -1872,6 +1916,7 @@
                 if (stored) {
                     gameState.allPlayers = JSON.parse(stored);
                 }
+                updatePlayersDisplay();
             }
         }
 
